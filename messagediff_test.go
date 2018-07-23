@@ -191,3 +191,34 @@ func TestIgnoreTag(t *testing.T) {
 		t.Errorf("Expected diff to be:\n%v\nbut got:\n%v", expect, diff)
 	}
 }
+
+func TestIgnoreByArgs(t *testing.T) {
+	a := struct {
+		X string
+		Y string
+	}{
+		X: "x",
+		Y: "y",
+	}
+	b := struct {
+		X string
+		Y string
+	}{
+		X: "xx",
+		Y: "y",
+	}
+
+	diff, equal := PrettyDiff(a, b, "X")
+	if !equal {
+		t.Errorf("Expected structs to be equal. Diff:\n%s", diff)
+	}
+
+	diff, equal = PrettyDiff(a, b, "Y")
+	if equal {
+		t.Errorf("Expected structs NOT to be equal.")
+	}
+	expect := "modified: .X = \"xx\"\n"
+	if diff != expect {
+		t.Errorf("Expected diff to be:\n%v\nbut got:\n%v", expect, diff)
+	}
+}
