@@ -11,8 +11,8 @@ import (
 
 // PrettyDiff does a deep comparison and returns the nicely formated results.
 // See DeepDiff for more details.
-func PrettyDiff(a, b interface{}) (string, bool) {
-	d, equal := DeepDiff(a, b)
+func PrettyDiff(a, b interface{}, ignores ...string) (string, bool) {
+	d, equal := DeepDiff(a, b, ignores...)
 	var dstr []string
 	for path, added := range d.Added {
 		dstr = append(dstr, fmt.Sprintf("added: %s = %#v\n", path.String(), added))
@@ -29,9 +29,9 @@ func PrettyDiff(a, b interface{}) (string, bool) {
 
 // DeepDiff does a deep comparison and returns the results.
 // If the field is time.Time, use Equal to compare
-func DeepDiff(a, b interface{}) (*Diff, bool) {
+func DeepDiff(a, b interface{}, ignores ...string) (*Diff, bool) {
 	d := newDiff()
-	return d, d.diff(reflect.ValueOf(a), reflect.ValueOf(b), nil)
+	return d, d.diff(reflect.ValueOf(a), reflect.ValueOf(b), nil, ignores...)
 }
 
 func newDiff() *Diff {
@@ -43,7 +43,7 @@ func newDiff() *Diff {
 	}
 }
 
-func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
+func (d *Diff) diff(aVal, bVal reflect.Value, path Path, ignores ...string) bool {
 	// The array underlying `path` could be modified in subsequent
 	// calls. Make sure we have a local copy.
 	localPath := make(Path, len(path))
@@ -115,7 +115,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 		bLen := bVal.Len()
 		for i := 0; i < min(aLen, bLen); i++ {
 			localPath := append(localPath, SliceIndex(i))
-			if eq := d.diff(aVal.Index(i), bVal.Index(i), localPath); !eq {
+			if eq := d.diff(aVal.Index(i), bVal.Index(i), localPath, ignores...); !eq {
 				equal = false
 			}
 		}
@@ -140,7 +140,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 			if !bI.IsValid() {
 				d.Removed[&localPath] = aI.Interface()
 				equal = false
-			} else if eq := d.diff(aI, bI, localPath); !eq {
+			} else if eq := d.diff(aI, bI, localPath, ignores...); !eq {
 				equal = false
 			}
 		}
@@ -170,16 +170,26 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 				if field.Tag.Get("testdiff") == "ignore" { // skip fields marked to be ignored
 					continue
 				}
+				skip := false
+				for _, ig := range ignores {
+					if field.Name == ig {
+						skip = true
+						break
+					}
+				}
+				if skip {
+					continue
+				}
 				localPath := append(localPath, StructField(field.Name))
 				aI := unsafeReflectValue(aVal.FieldByIndex(index))
 				bI := unsafeReflectValue(bVal.FieldByIndex(index))
-				if eq := d.diff(aI, bI, localPath); !eq {
+				if eq := d.diff(aI, bI, localPath, ignores...); !eq {
 					equal = false
 				}
 			}
 		}
 	case reflect.Ptr:
-		equal = d.diff(aVal.Elem(), bVal.Elem(), localPath)
+		equal = d.diff(aVal.Elem(), bVal.Elem(), localPath, ignores...)
 	default:
 		if reflect.DeepEqual(aVal.Interface(), bVal.Interface()) {
 			equal = true
