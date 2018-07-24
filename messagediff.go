@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -152,23 +153,32 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, options ...Option) bool
 		}
 	case reflect.Struct:
 		typ := aVal.Type()
-	FIELDS_LOOP:
-		for i := 0; i < typ.NumField(); i++ {
-			index := []int{i}
-			field := typ.FieldByIndex(index)
-			if field.Tag.Get("testdiff") == "ignore" { // skip fields marked to be ignored
-				continue
-			}
-			for _, o := range options {
-				if skip := o.apply(&opts{field: field}); skip {
-					break FIELDS_LOOP
-				}
-			}
-			localPath := append(localPath, StructField(field.Name))
-			aI := unsafeReflectValue(aVal.FieldByIndex(index))
-			bI := unsafeReflectValue(bVal.FieldByIndex(index))
-			if eq := d.diff(aI, bI, localPath, options...); !eq {
+		if typ.String() == "time.Time" {
+			aTime := aVal.Interface().(time.Time)
+			bTime := bVal.Interface().(time.Time)
+			if !aTime.Equal(bTime) {
+				d.Modified[&localPath] = bVal.Interface().(time.Time).String()
 				equal = false
+			}
+		} else {
+		FIELDS_LOOP:
+			for i := 0; i < typ.NumField(); i++ {
+				index := []int{i}
+				field := typ.FieldByIndex(index)
+				if field.Tag.Get("testdiff") == "ignore" { // skip fields marked to be ignored
+					continue
+				}
+				for _, o := range options {
+					if skip := o.apply(&opts{field: field}); skip {
+						break FIELDS_LOOP
+					}
+				}
+				localPath := append(localPath, StructField(field.Name))
+				aI := unsafeReflectValue(aVal.FieldByIndex(index))
+				bI := unsafeReflectValue(bVal.FieldByIndex(index))
+				if eq := d.diff(aI, bI, localPath, options...); !eq {
+					equal = false
+				}
 			}
 		}
 	case reflect.Ptr:
