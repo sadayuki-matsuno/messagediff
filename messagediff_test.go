@@ -192,7 +192,7 @@ func TestIgnoreTag(t *testing.T) {
 	}
 }
 
-func TestIgnoreByArgs(t *testing.T) {
+func TestIgnoreStructFieldOption(t *testing.T) {
 	a := struct {
 		X string
 		Y string
@@ -208,12 +208,12 @@ func TestIgnoreByArgs(t *testing.T) {
 		Y: "y",
 	}
 
-	diff, equal := PrettyDiff(a, b, "X")
+	diff, equal := PrettyDiff(a, b, IgnoreStructField("X"))
 	if !equal {
 		t.Errorf("Expected structs to be equal. Diff:\n%s", diff)
 	}
 
-	diff, equal = PrettyDiff(a, b, "Y")
+	diff, equal = PrettyDiff(a, b, IgnoreStructField("Y"))
 	if equal {
 		t.Errorf("Expected structs NOT to be equal.")
 	}
