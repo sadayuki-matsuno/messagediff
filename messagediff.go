@@ -10,6 +10,7 @@ import (
 )
 
 // PrettyDiff does a deep comparison and returns the nicely formated results.
+// See DeepDiff for more details.
 func PrettyDiff(a, b interface{}) (string, bool) {
 	d, equal := DeepDiff(a, b)
 	var dstr []string
@@ -27,6 +28,7 @@ func PrettyDiff(a, b interface{}) (string, bool) {
 }
 
 // DeepDiff does a deep comparison and returns the results.
+// If the field is time.Time, use Equal to compare
 func DeepDiff(a, b interface{}) (*Diff, bool) {
 	d := newDiff()
 	return d, d.diff(reflect.ValueOf(a), reflect.ValueOf(b), nil)
@@ -153,6 +155,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path) bool {
 		}
 	case reflect.Struct:
 		typ := aVal.Type()
+		// If the field is time.Time, use Equal to compare
 		if typ.String() == "time.Time" {
 			aTime := aVal.Interface().(time.Time)
 			bTime := bVal.Interface().(time.Time)
