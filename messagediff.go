@@ -168,7 +168,6 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 				equal = false
 			}
 		} else {
-		FIELDS_LOOP:
 			for i := 0; i < typ.NumField(); i++ {
 				index := []int{i}
 				field := typ.FieldByIndex(index)
@@ -176,9 +175,8 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 					continue
 				}
 				if _, skip := opts.ignoreField[field.Name]; skip {
-					continue FIELDS_LOOP
+					continue
 				}
-
 				localPath := append(localPath, StructField(field.Name))
 				aI := unsafeReflectValue(aVal.FieldByIndex(index))
 				bI := unsafeReflectValue(bVal.FieldByIndex(index))
